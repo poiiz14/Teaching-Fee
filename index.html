@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ระบบส่งค่าสอนออนไลน์</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:,">
+  <style>
+    body { font-family: 'Sarabun', sans-serif; }
+    .pastel-bg { background: linear-gradient(135deg,#ffeef8 0%,#f0f9ff 50%,#f0fdf4 100%); }
+    .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+    .status-pill { border:0; border-radius:9999px; padding:4px 10px; font-weight:600; font-size:12px; }
+    .status-pending { background: linear-gradient(45deg,#fef3c7,#fde68a); }
+    .status-processing { background: linear-gradient(45deg,#dbeafe,#bfdbfe); }
+    .status-revision { background: linear-gradient(45deg,#fed7d7,#fbb6ce); }
+    .status-recheck { background: linear-gradient(45deg,#e0e7ff,#c7d2fe); }
+    .status-finance { background: linear-gradient(45deg,#d1fae5,#a7f3d0); }
+    .status-completed { background: linear-gradient(45deg,#dcfce7,#bbf7d0); }
+    .modal-bg{ background: rgba(0,0,0,.35); }
+    #apiInfo{ font-size:12px; color:#64748b }
+  </style>
+</head>
+<body class="pastel-bg min-h-screen">
+  <div class="container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+      <h1 class="text-4xl font-bold text-purple-800 mb-2">🎓 ระบบส่งค่าสอนออนไลน์</h1>
+      <p class="text-purple-600">ติดตามการส่งค่าตอบแทนอาจารย์พิเศษ</p>
+      <p id="apiInfo" class="mt-2"></p>
+    </div>
+
+    <!-- ฟอร์มเพิ่ม -->
+    <div class="bg-white rounded-2xl card-shadow p-6 mb-8">
+      <h2 class="text-2xl font-semibold text-purple-800 mb-6">➕ เพิ่มรายการใหม่</h2>
+      <form id="recordForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="subject" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="teacher" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div>
+          <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
+          <select id="semester" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required>
+            <option value="">เลือกภาคการศึกษา</option>
+            <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
+            <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
+            <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
+          </select>
+        </div>
+        <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="academicYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div><label class="block text-sm font-medium mb-2">ปีงบประมาณ</label><input id="budgetYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="category" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="amount" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="month" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+        <div><label class="block text-sm font-medium mb-2">หมายเหตุ</label><input id="note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
+        <div class="md:col-span-2 lg:col-span-3">
+          <button type="submit" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg">💾 บันทึกข้อมูล</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- สรุป -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow"><h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3><p id="totalAmount" class="text-3xl font-bold text-blue-900">0 บาท</p></div>
+      <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 card-shadow"><h3 class="text-lg font-semibold text-green-800 mb-2">📊 จำนวนรายการ</h3><p id="totalRecords" class="text-3xl font-bold text-green-900">0 รายการ</p></div>
+      <div class="bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl p-6 card-shadow"><h3 class="text-lg font-semibold text-pink-800 mb-2">✅ เสร็จสิ้นแล้ว</h3><p id="completedRecords" class="text-3xl font-bold text-pink-900">0 รายการ</p></div>
+    </div>
+
+    <!-- ตาราง -->
+    <div class="bg-white rounded-2xl card-shadow overflow-hidden">
+      <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+        <h3 class="text-xl font-semibold text-purple-800">📋 รายการข้อมูล</h3>
+        <button onclick="exportCSV()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-lg text-sm">⬇️ ส่งออก CSV</button>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead class="bg-gradient-to-r from-purple-50 to-pink-50">
+            <tr>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ลำดับ</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">รายวิชา</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">อาจารย์</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ภาคการศึกษา</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ปีการศึกษา</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมวดเงิน</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">เดือนที่เบิก</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จำนวนเงิน</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">สถานะ</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal แก้ไข -->
+  <div id="editModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full card-shadow">
+      <div class="px-6 py-4 border-b flex items-center justify-between">
+        <h3 class="text-xl font-semibold text-purple-800">✏️ แก้ไขรายการ</h3>
+        <button class="text-gray-500 hover:text-gray-800" onclick="closeEditModal()">✖</button>
+      </div>
+      <div class="p-6">
+        <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <input type="hidden" id="edit_id">
+          <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="edit_subject" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="edit_teacher" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div>
+            <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
+            <select id="edit_semester" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required>
+              <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
+              <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
+              <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
+            </select>
+          </div>
+          <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="edit_academicYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">ปีงบประมาณ</label><input id="edit_budgetYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="edit_category" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="edit_amount" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="edit_month" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">หมายเหตุ</label><input id="edit_note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
+          <div class="md:col-span-2 lg:col-span-3 flex gap-3">
+            <button class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg" type="submit">💾 บันทึกการแก้ไข</button>
+            <button class="bg-gray-100 px-6 py-3 rounded-lg" type="button" onclick="closeEditModal()">ยกเลิก</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <!-- โหลดสคริปต์ไว้ท้ายสุดเสมอ -->
+  <script defer src="./app.js"></script>
+</body>
+</html>
