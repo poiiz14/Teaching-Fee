@@ -1,5 +1,5 @@
 /* ===== CONFIG ===== */
-let SCRIPT_URL = 'PUT_YOUR_APPS_SCRIPT_URL_HERE'; // <- ใส่ของปอย
+let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzMGjojLLQ40BxjFEluHe9WBj7W4_VDle4gAvoTK6esDs0-jIsbUl9O_0AOfoxfcrapZg/exec'; // <- ใส่ของปอย
 const hashApi = new URLSearchParams(location.hash.replace('#','')).get('api');
 if (hashApi) SCRIPT_URL = hashApi;
 
@@ -430,3 +430,4 @@ window.removeRecord = removeRecord;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.exportCSV = exportCSV;
+
