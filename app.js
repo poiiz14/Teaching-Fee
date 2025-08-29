@@ -414,7 +414,7 @@ function prefillDefaults(){
   if (g('month')) g('month').value = thMonths[m-1];
 }
 function exportCSV(){
-  const rows = [['ID','รายวิชา','อาจารย์','ภาคการศึกษา','ปีการศึกษา','ปีงบประมาณ','หมวดเงิน','เดือนที่เบิก','จำนวนเงิน','สถานะ','รายการ','วันที่บันทึก','รวมเป็นเงิน','ผู้บันทึก']];
+  const rows = [['ID','รายวิชา','อาจารย์','ภาคการศึกษาที่','ปีการศึกษา','ปีงบประมาณ','หมวดเงิน','เดือนที่เบิก','จำนวนเงิน','สถานะ','รายการ','วันที่บันทึก','รวมเป็นเงิน','ผู้บันทึก']];
   (filteredRecords||[]).forEach(r=>{
     rows.push([r.id,r.subject,r.teacher,r.semester,r.academicYear,r.budgetYear,r.category,r.month,r.amount,r.status,r.note,(r.timestamp?new Date(r.timestamp).toLocaleString('th-TH'):''),r.total,r.recorder]);
   });
@@ -430,4 +430,5 @@ window.removeRecord = removeRecord;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.exportCSV = exportCSV;
+
 
