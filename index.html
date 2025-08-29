@@ -8,6 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:,">
+  <link rel="icon" href="favicon.ico">
   <style>
     body { font-family: 'Sarabun', sans-serif; }
     .pastel-bg { background: linear-gradient(135deg,#ffeef8 0%,#f0f9ff 50%,#f0fdf4 100%); }
@@ -21,14 +22,14 @@
     .status-completed { background: linear-gradient(45deg,#dcfce7,#bbf7d0); }
     .modal-bg{ background: rgba(0,0,0,.35); }
     #apiInfo{ font-size:12px; color:#64748b }
+    #apiInfo { display: none !important; }
   </style>
 </head>
 <body class="pastel-bg min-h-screen">
   <div class="container mx-auto px-4 py-8">
     <div class="text-center mb-8">
-      <h1 class="text-4xl font-bold text-purple-800 mb-2">🎓 ระบบส่งค่าสอนออนไลน์</h1>
+      <h1 class="text-4xl font-bold text-purple-800 mb-2">🎓 ระบบติดตามการส่งค่าสอนออนไลน์</h1>
       <p class="text-purple-600">ติดตามการส่งค่าตอบแทนอาจารย์พิเศษ</p>
-      <p id="apiInfo" class="mt-2"></p>
     </div>
 
     <!-- ฟอร์มเพิ่ม -->
@@ -59,11 +60,31 @@
     </div>
 
     <!-- สรุป -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-      <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow"><h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3><p id="totalAmount" class="text-3xl font-bold text-blue-900">0 บาท</p></div>
-      <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 card-shadow"><h3 class="text-lg font-semibold text-green-800 mb-2">📊 จำนวนรายการ</h3><p id="totalRecords" class="text-3xl font-bold text-green-900">0 รายการ</p></div>
-      <div class="bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl p-6 card-shadow"><h3 class="text-lg font-semibold text-pink-800 mb-2">✅ เสร็จสิ้นแล้ว</h3><p id="completedRecords" class="text-3xl font-bold text-pink-900">0 รายการ</p></div>
-    </div>
+    <!-- เพิ่ม grid-cols-4 เพื่อรองรับกล่องใหม่ -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <!-- รวมเงินทั้งหมด -->
+        <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow">
+          <h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3>
+          <p id="totalAmount" class="text-3xl font-bold text-blue-900">0 บาท</p>
+        </div>
+        <!-- จำนวนรายการ -->
+        <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 card-shadow">
+          <h3 class="text-lg font-semibold text-green-800 mb-2">📊 จำนวนรายการ</h3>
+          <p id="totalRecords" class="text-3xl font-bold text-green-900">0 รายการ</p>
+        </div>
+        <!-- เสร็จสิ้นแล้ว -->
+        <div class="bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl p-6 card-shadow">
+          <h3 class="text-lg font-semibold text-pink-800 mb-2">✅ เสร็จสิ้นแล้ว</h3>
+          <p id="completedRecords" class="text-3xl font-bold text-pink-900">0 รายการ</p>
+        </div>
+        <!-- กล่องใหม่: แยกตามหมวดเงิน -->
+        <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 card-shadow">
+          <h3 class="text-lg font-semibold text-purple-800 mb-2">📂 ยอดรวมตามหมวดเงิน</h3>
+          <div id="categorySummary" class="text-purple-900 text-sm leading-6">
+            - ยังไม่มีข้อมูล -
+          </div>
+        </div>
+      </div>
 
     <!-- ตาราง -->
     <div class="bg-white rounded-2xl card-shadow overflow-hidden">
@@ -83,6 +104,7 @@
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมวดเงิน</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">เดือนที่เบิก</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จำนวนเงิน</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมายเหตุ</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">สถานะ</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จัดการ</th>
             </tr>
