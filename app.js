@@ -282,42 +282,62 @@ function setBudgetYearInput(){ if(g('budgetYear')) g('budgetYear').value=current
 function prefillDefaults(){ const n=new Date(), gy=n.getFullYear(), by=gy+543, m=n.getMonth()+1; const ay=(m>=8)?by:(by-1); if(g('academicYear')) g('academicYear').value=ay; const th=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']; if(g('month')) g('month').value=th[m-1]; }
 
 function renderTable() {
-  const tb = document.getElementById('recordsTable');
-  if (!tb) return;
-  tb.innerHTML = '';
+  try {
+    const tb = document.getElementById('recordsTable');
+    if (!tb) {
+      console.warn('[renderTable] #recordsTable ไม่พบใน DOM');
+      return;
+    }
 
-  (filteredRecords || []).forEach((r, i) => {
-    const opt = statusOptions.find(s => s.value === r.status) || statusOptions[0];
+    const rows = filteredRecords || [];
+    console.log('[renderTable] records =', rows.length, rows);
 
-    const tr = document.createElement('tr');
-    tr.className = 'border-b border-gray-100 hover:bg-purple-50 transition-colors';
-    tr.innerHTML = `
-      <td class="px-4 py-3 text-sm">${i + 1}</td>
-      <td class="px-4 py-3 text-sm font-medium">${esc(r.subject || '')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.teacher || '')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.semester || '')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.academicYear || '')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.category || '')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.month || '')}</td>
-      <td class="px-4 py-3 text-sm font-semibold text-green-600">
-        ${(Number(r.amount) || 0).toLocaleString()} บาท
-      </td>
-      <td class="px-4 py-3 text-sm">${esc(r.note || '')}</td>
-      <td class="px-4 py-3">
-        <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
-          ${statusOptions.map(s => `<option value="${s.value}" ${r.status===s.value?'selected':''}>${s.label}</option>`).join('')}
-        </select>
-      </td>
-      <td class="px-4 py-3 flex gap-2">
-        <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium"
-                onclick="openEditModal('${r.id}')">✏️ แก้ไข</button>
-        <button class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded-lg text-xs font-medium"
-                onclick="removeRecord('${r.id}')">🗑️ ลบ</button>
-      </td>
-    `;
-    tb.appendChild(tr);
-  });
+    // ถ้าไม่มีข้อมูล แสดง placeholder 1 แถว
+    if (!rows.length) {
+      tb.innerHTML = `
+        <tr class="border-b border-gray-100">
+          <td class="px-4 py-3 text-sm text-slate-500" colspan="11">- ยังไม่พบข้อมูลในปีงบประมาณนี้ -</td>
+        </tr>`;
+      return;
+    }
+
+    // มีข้อมูล: วาดตามจริง
+    const html = rows.map((r, i) => {
+      const opt = statusOptions.find(s => s.value === r.status) || statusOptions[0];
+      return `
+        <tr class="border-b border-gray-100 hover:bg-purple-50 transition-colors">
+          <td class="px-4 py-3 text-sm">${i + 1}</td>
+          <td class="px-4 py-3 text-sm font-medium">${esc(r.subject || '')}</td>
+          <td class="px-4 py-3 text-sm">${esc(r.teacher || '')}</td>
+          <td class="px-4 py-3 text-sm">${esc(r.semester || '')}</td>
+          <td class="px-4 py-3 text-sm">${esc(r.academicYear || '')}</td>
+          <td class="px-4 py-3 text-sm">${esc(r.category || '')}</td>
+          <td class="px-4 py-3 text-sm">${esc(r.month || '')}</td>
+          <td class="px-4 py-3 text-sm font-semibold text-green-600">${(Number(r.amount)||0).toLocaleString()} บาท</td>
+          <td class="px-4 py-3 text-sm">${esc(r.note || '')}</td>
+          <td class="px-4 py-3">
+            <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
+              ${statusOptions.map(s=>`<option value="${s.value}" ${r.status===s.value?'selected':''}>${s.label}</option>`).join('')}
+            </select>
+          </td>
+          <td class="px-4 py-3 flex gap-2">
+            <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium" onclick="openEditModal('${r.id}')">✏️ แก้ไข</button>
+            <button class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded-lg text-xs font-medium" onclick="removeRecord('${r.id}')">🗑️ ลบ</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+    tb.innerHTML = html;
+  } catch (err) {
+    console.warn('[renderTable] error:', err);
+    const tb = document.getElementById('recordsTable');
+    if (tb) tb.innerHTML = `
+      <tr class="border-b border-gray-100">
+        <td class="px-4 py-3 text-sm text-rose-600" colspan="11">เกิดข้อผิดพลาดในการแสดงผลตาราง</td>
+      </tr>`;
+  }
 }
+
 /* ===== Modal แก้ไข ===== */
 function openEditModal(id) {
   const r = (filteredRecords || []).find(x => x.id === id);
