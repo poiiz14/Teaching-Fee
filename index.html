@@ -34,8 +34,15 @@
 
     <!-- แท็บปีงบประมาณ -->
     <div class="bg-white rounded-2xl card-shadow mb-6">
-      <div class="px-4 pt-3 border-b border-purple-100 flex items-center justify-between">
+      <div class="px-4 pt-3 border-b border-purple-100 flex items-center justify-between gap-3 flex-wrap">
         <div class="flex items-end gap-2" id="fyTabs"></div>
+
+        <!-- ช่องอีเมลผู้ใช้เพื่อใช้ตรวจสิทธิ์ -->
+        <div class="flex items-center gap-2">
+          <input id="userEmail" class="px-3 py-2 border border-purple-200 rounded-lg text-sm" placeholder="อีเมลผู้ใช้งาน (สำหรับสิทธิ์)">
+          <button id="saveEmailBtn" class="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm">บันทึก</button>
+        </div>
+
         <div class="py-2">
           <button id="addFYBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg text-sm">+ เพิ่มปีงบฯ</button>
         </div>
@@ -174,7 +181,8 @@
       </div>
     </div>
   </div>
-
+<!-- อย่าลืม Chart.js และ app.js ตามที่ใช้อยู่ -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script defer src="./app.js"></script>
 </body>
 </html>
