@@ -280,7 +280,102 @@ function g(id){ return document.getElementById(id); }
 function v(id){ const el=g(id); return el?el.value.trim():''; }
 function setBudgetYearInput(){ if(g('budgetYear')) g('budgetYear').value=currentFY; if(g('edit_budgetYear')) g('edit_budgetYear').value=currentFY; const l=g('currentFYLabel'); if(l) l.textContent=currentFY; }
 function prefillDefaults(){ const n=new Date(), gy=n.getFullYear(), by=gy+543, m=n.getMonth()+1; const ay=(m>=8)?by:(by-1); if(g('academicYear')) g('academicYear').value=ay; const th=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']; if(g('month')) g('month').value=th[m-1]; }
-function renderTable(){ /* ... ของเดิมที่ปอยใช้อยู่ (ไม่ตัดรายละเอียดเพื่อความสั้น) ... */ }
 
-/* ปุ่มที่เรียกจาก HTML */
+function renderTable() {
+  const tb = document.getElementById('recordsTable');
+  if (!tb) return;
+  tb.innerHTML = '';
+
+  (filteredRecords || []).forEach((r, i) => {
+    const opt = statusOptions.find(s => s.value === r.status) || statusOptions[0];
+
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-gray-100 hover:bg-purple-50 transition-colors';
+    tr.innerHTML = `
+      <td class="px-4 py-3 text-sm">${i + 1}</td>
+      <td class="px-4 py-3 text-sm font-medium">${esc(r.subject || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.teacher || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.semester || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.academicYear || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.category || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.month || '')}</td>
+      <td class="px-4 py-3 text-sm font-semibold text-green-600">
+        ${(Number(r.amount) || 0).toLocaleString()} บาท
+      </td>
+      <td class="px-4 py-3 text-sm">${esc(r.note || '')}</td>
+      <td class="px-4 py-3">
+        <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
+          ${statusOptions.map(s => `<option value="${s.value}" ${r.status===s.value?'selected':''}>${s.label}</option>`).join('')}
+        </select>
+      </td>
+      <td class="px-4 py-3 flex gap-2">
+        <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium"
+                onclick="openEditModal('${r.id}')">✏️ แก้ไข</button>
+        <button class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded-lg text-xs font-medium"
+                onclick="removeRecord('${r.id}')">🗑️ ลบ</button>
+      </td>
+    `;
+    tb.appendChild(tr);
+  });
+}
+/* ===== Modal แก้ไข ===== */
+function openEditModal(id) {
+  const r = (filteredRecords || []).find(x => x.id === id);
+  if (!r) return;
+
+  document.getElementById('edit_id').value = r.id;
+  document.getElementById('edit_subject').value = r.subject || '';
+  document.getElementById('edit_teacher').value = r.teacher || '';
+  document.getElementById('edit_semester').value = r.semester || 'ภาคการศึกษาที่ 1';
+  document.getElementById('edit_academicYear').value = r.academicYear || '';
+  document.getElementById('edit_budgetYear').value = currentFY;           // ยึดตามแท็บ
+  document.getElementById('edit_category').value = r.category || '';
+  document.getElementById('edit_amount').value = r.amount || 0;
+  document.getElementById('edit_month').value = r.month || '';
+  document.getElementById('edit_note').value = r.note || '';
+
+  document.getElementById('editModal').classList.remove('hidden');
+}
+function closeEditModal() {
+  const m = document.getElementById('editModal');
+  if (m) m.classList.add('hidden');
+}
+
+/* ===== บันทึกการแก้ไข ===== */
+async function onEditSubmit(e) {
+  e.preventDefault();
+
+  const id = document.getElementById('edit_id').value;
+  const payload = {
+    id,
+    subject: document.getElementById('edit_subject').value.trim(),
+    teacher: document.getElementById('edit_teacher').value.trim(),
+    semester: document.getElementById('edit_semester').value,
+    academicYear: document.getElementById('edit_academicYear').value.trim(),
+    budgetYear: currentFY, // ล็อกตามปีงบฯ ที่เลือก
+    category: document.getElementById('edit_category').value.trim(),
+    amount: parseFloat(document.getElementById('edit_amount').value || '0'),
+    month: document.getElementById('edit_month').value.trim(),
+    note: document.getElementById('edit_note').value.trim()
+  };
+
+  try {
+    await jsonp({ action: 'update', sheet: currentFY, ...payload });
+
+    // sync ข้อมูลในหน้าทันที
+    const idx = allRecords.findIndex(r => r.id === id);
+    if (idx > -1) allRecords[idx] = { ...allRecords[idx], ...payload };
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
+
+    renderTable();
+    renderSummary();
+    closeEditModal();
+  } catch (err) {
+    alert('แก้ไขไม่สำเร็จ: ' + err.message);
+  }
+}
+
+/* เผยให้ HTML เรียกได้ */
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
 window.changeStatus=changeStatus; window.removeRecord=removeRecord;
