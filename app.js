@@ -165,9 +165,26 @@ async function onEditSubmit(e){
 function renderSummary() {
   const total = (filteredRecords||[]).reduce((s,r)=> s + (Number(r.amount)||0), 0);
   const done = (filteredRecords||[]).filter(r=>r.status==='completed').length;
+
   g('totalAmount').textContent = total.toLocaleString() + ' บาท';
   g('totalRecords').textContent = (filteredRecords||[]).length + ' รายการ';
   g('completedRecords').textContent = done + ' รายการ';
+
+  // --- คำนวณยอดรวมแยกตามหมวดเงิน ---
+  const categoryTotals = {};
+  (filteredRecords||[]).forEach(r => {
+    const cat = r.category || 'ไม่ระบุ';
+    const amt = Number(r.amount) || 0;
+    categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+  });
+
+  // --- สร้างข้อความแสดงผล ---
+  const lines = Object.entries(categoryTotals)
+    .map(([cat, amt]) => `• ${cat}: ${amt.toLocaleString()} บาท`);
+
+  g('categorySummary').innerHTML = lines.length
+    ? lines.join('<br>')
+    : '- ยังไม่มีข้อมูล -';
 }
 
 function renderTable() {
@@ -185,8 +202,9 @@ function renderTable() {
       <td class="px-4 py-3 text-sm">${esc(r.category||'')}</td>
       <td class="px-4 py-3 text-sm">${esc(r.month||'')}</td>
       <td class="px-4 py-3 text-sm font-semibold text-green-600">${(Number(r.amount)||0).toLocaleString()} บาท</td>
+      <td class="px-4 py-3 text-sm">${esc(r.note || '')}</td>
       <td class="px-4 py-3">
-        <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
+          <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
           ${statusOptions.map(s=>`<option value="${s.value}" ${r.status===s.value?'selected':''}>${s.label}</option>`).join('')}
         </select>
       </td>
