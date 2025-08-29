@@ -6,9 +6,9 @@
   <title>ระบบติดตามการส่งค่าสอนออนไลน์</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="icon" href="data:,">
-  <link rel="icon" href="favicon.ico">
   <style>
     body { font-family: 'Sarabun', sans-serif; }
     .pastel-bg { background: linear-gradient(135deg,#ffeef8 0%,#f0f9ff 50%,#f0fdf4 100%); }
@@ -21,9 +21,7 @@
     .status-finance { background: linear-gradient(45deg,#d1fae5,#a7f3d0); }
     .status-completed { background: linear-gradient(45deg,#dcfce7,#bbf7d0); }
     .modal-bg{ background: rgba(0,0,0,.35); }
-    #apiInfo{ font-size:12px; color:#64748b }
-    #apiInfo { display: none !important; }
-    .fy-tab { padding: .5rem 1rem; border-radius: .5rem .5rem 0 0; background:#f3e8ff; color:#6b21a8; font-weight:600; }
+    .fy-tab { padding:.5rem 1rem; border-radius:.5rem .5rem 0 0; background:#f3e8ff; color:#6b21a8; font-weight:600; }
     .fy-tab.active { background:#fff; border:1px solid #e9d5ff; border-bottom:0; color:#4c1d95; }
   </style>
 </head>
@@ -74,7 +72,7 @@
       </form>
     </div>
 
-    <!-- สรุป -->
+    <!-- สรุปตัวเลข -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow">
         <h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3>
@@ -91,6 +89,26 @@
       <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 card-shadow">
         <h3 class="text-lg font-semibold text-purple-800 mb-2">📂 ยอดรวมตามหมวดเงิน</h3>
         <div id="categorySummary" class="text-purple-900 text-sm leading-6">- ยังไม่มีข้อมูล -</div>
+      </div>
+    </div>
+
+    <!-- ตั้งยอดตั้งต้น + กราฟ -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <!-- จัดการยอดตั้งต้น -->
+      <div class="bg-white rounded-2xl card-shadow p-6">
+        <h3 class="text-xl font-semibold text-purple-800 mb-4">⚙️ ตั้งยอดตั้งต้นตามหมวดเงิน</h3>
+        <div class="flex gap-3 mb-4">
+          <input id="newTargetCategory" class="flex-1 px-3 py-2 border border-purple-200 rounded-lg" placeholder="ชื่อหมวดเงิน (เช่น รายได้สถานบัน)">
+          <input id="newTargetAmount" type="number" class="w-40 px-3 py-2 border border-purple-200 rounded-lg" placeholder="จำนวน (บาท)">
+          <button id="addTargetBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">เพิ่ม</button>
+        </div>
+        <div id="budgetTargetsList" class="space-y-2 text-sm"></div>
+      </div>
+
+      <!-- กราฟการใช้เงิน -->
+      <div class="bg-white rounded-2xl card-shadow p-6">
+        <h3 class="text-xl font-semibold text-purple-800 mb-4">📊 การใช้เงินตามหมวด (เทียบยอดตั้งต้น)</h3>
+        <canvas id="budgetChart" height="140"></canvas>
       </div>
     </div>
 
@@ -123,7 +141,6 @@
     </div>
   </div>
 
-  <!-- Modal แก้ไข -->
   <div id="editModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-4xl w-full card-shadow">
       <div class="px-6 py-4 border-b flex items-center justify-between">
@@ -133,22 +150,22 @@
       <div class="p-6">
         <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <input type="hidden" id="edit_id">
-          <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="edit_subject" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="edit_teacher" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="edit_subject" class="w-full px-3 py-2 border rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="edit_teacher" class="w-full px-3 py-2 border rounded-lg" required></div>
           <div>
             <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
-            <select id="edit_semester" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required>
+            <select id="edit_semester" class="w-full px-3 py-2 border rounded-lg" required>
               <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
               <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
               <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
             </select>
           </div>
-          <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="edit_academicYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">ปีงบประมาณ</label><input id="edit_budgetYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="edit_category" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="edit_amount" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="edit_month" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">รายการ</label><input id="edit_note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
+          <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="edit_academicYear" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">ปีงบประมาณ</label><input id="edit_budgetYear" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="edit_category" class="w-full px-3 py-2 border rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="edit_amount" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="edit_month" class="w-full px-3 py-2 border rounded-lg" required></div>
+          <div><label class="block text-sm font-medium mb-2">รายการ</label><input id="edit_note" class="w-full px-3 py-2 border rounded-lg"></div>
           <div class="md:col-span-2 lg:col-span-3 flex gap-3">
             <button class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg" type="submit">💾 บันทึกการแก้ไข</button>
             <button class="bg-gray-100 px-6 py-3 rounded-lg" type="button" onclick="closeEditModal()">ยกเลิก</button>
@@ -158,7 +175,6 @@
     </div>
   </div>
 
-  <!-- โหลดสคริปต์ไว้ท้ายสุดเสมอ -->
   <script defer src="./app.js"></script>
 </body>
 </html>
