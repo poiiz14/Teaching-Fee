@@ -4,6 +4,25 @@ let SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzMGjojLLQ40BxjFEluHe9
 const hashApi = new URLSearchParams(location.hash.replace('#','')).get('api');
 if (hashApi) SCRIPT_URL = hashApi;
 
+/* ปีงบประมาณ: เริ่ม 1 ต.ค. และไม่น้อยกว่า 2568 */
+function guessFiscalYearTH() {
+  const d = new Date();
+  const be = d.getFullYear() + 543;
+  const m = d.getMonth(); // 0-11
+  const fy = (m >= 9) ? be + 1 : be; // ต.ค.(9) เป็นปีถัดไป
+  return Math.max(fy, 2568);
+}
+
+/* รายการปีที่มีแท็บ (แก้/เพิ่มได้จาก UI, เก็บใน localStorage) */
+const defaultFY = guessFiscalYearTH();
+let FY_LIST = JSON.parse(localStorage.getItem('fyList') || '[]');
+if (!FY_LIST.length) {
+  // เริ่มจาก 2568 ... จนถึงปีปัจจุบัน (พร้อมปีถัดไป 1 ปีเพื่อเผื่อเริ่มงบ)
+  const maxFY = Math.max(defaultFY, 2569);
+  for (let y = 2568; y <= maxFY; y++) FY_LIST.push(String(y));
+}
+let currentFY = localStorage.getItem('currentFY') || String(defaultFY);
+
 const statusOptions = [
   { value: 'pending',    label:'ส่งงานวิชาการแล้ว',      class:'status-pending' },
   { value: 'processing', label:'อยู่ระหว่างส่งงานการเงินตรวจ', class:'status-processing' },
@@ -20,14 +39,15 @@ document.addEventListener('DOMContentLoaded', async () => {
   const apiInfoEl = document.getElementById('apiInfo');
   if (apiInfoEl) apiInfoEl.textContent = 'API: ' + (SCRIPT_URL || 'ยังไม่ได้ตั้งค่า');
 
-  prefillDefaults();
+  renderFYTabs();          // (1) วาดแท็บ
+  prefillDefaults();       // (5) ตั้งค่าดีฟอลต์ตามปฏิทินงบไทย
   attachEvents();
 
   try {
     await healthCheck();
-    await loadRecords();
+    await loadRecords();   // (2)(3) โหลดเฉพาะชีท/ปีปัจจุบัน
   } catch(e) {
-    // จะมี SweetAlert แจ้งให้อยู่แล้วใน healthCheck()
+    // healthCheck จะฟ้องให้แล้ว
   }
 });
 
@@ -36,6 +56,63 @@ function attachEvents() {
   if (f1) f1.addEventListener('submit', onSubmit);
   const f2 = document.getElementById('editForm');
   if (f2) f2.addEventListener('submit', onEditSubmit);
+
+  const addBtn = document.getElementById('addFYBtn');
+  if (addBtn) addBtn.addEventListener('click', onAddFY);
+}
+
+/* ====== Tabs ====== */
+function renderFYTabs() {
+  const wrap = document.getElementById('fyTabs');
+  const label = document.getElementById('currentFYLabel');
+  if (!wrap) return;
+
+  wrap.innerHTML = '';
+  FY_LIST.forEach(fy => {
+    const btn = document.createElement('button');
+    btn.className = 'fy-tab' + (fy === currentFY ? ' active' : '');
+    btn.dataset.fy = fy;
+    btn.textContent = fy;
+    btn.addEventListener('click', async () => {
+      if (currentFY === fy) return;
+      currentFY = fy;
+      localStorage.setItem('currentFY', currentFY);
+      setBudgetYearInput();        // อัปเดตช่องปีงบในฟอร์มให้ตรงแท็บ
+      renderFYTabs();              // รีเฟรช active tab
+      await loadRecords();         // โหลดข้อมูลปีนี้
+    });
+    wrap.appendChild(btn);
+  });
+  if (label) label.textContent = currentFY;
+}
+
+function onAddFY() {
+  Swal.fire({
+    title: 'เพิ่มปีงบประมาณ',
+    input: 'number',
+    inputLabel: 'ระบุปีงบฯ (เช่น 2569)',
+    inputValue: Math.max(Number(FY_LIST[FY_LIST.length-1]||currentFY)+1, 2568),
+    showCancelButton: true,
+    confirmButtonText: 'เพิ่ม',
+    cancelButtonText: 'ยกเลิก',
+    inputValidator: (v) => {
+      const n = Number(v);
+      if (!n || n < 2568) return 'ปีงบฯ ต้องเป็นตัวเลขตั้งแต่ 2568 ขึ้นไป';
+    }
+  }).then(res => {
+    if (!res.isConfirmed) return;
+    const fy = String(res.value);
+    if (!FY_LIST.includes(fy)) {
+      FY_LIST.push(fy);
+      FY_LIST.sort(); // เรียง
+      localStorage.setItem('fyList', JSON.stringify(FY_LIST));
+    }
+    currentFY = fy;
+    localStorage.setItem('currentFY', currentFY);
+    setBudgetYearInput();
+    renderFYTabs();
+    loadRecords();
+  });
 }
 
 /* ===== JSONP helper ===== */
@@ -58,18 +135,20 @@ function jsonp(params) {
 
 async function healthCheck(){
   try { await jsonp({action:'ping'}); return true; }
-  catch { 
-    try { await jsonp({action:'get'}); return true; }
+  catch {
+    try { await jsonp({action:'get', sheet: currentFY}); return true; }
     catch(e){ Swal.fire({icon:'error',title:'เชื่อมต่อ API ไม่ได้', text:e.message||e}); throw e; }
   }
 }
 
-/* ===== CRUD ===== */
+/* ===== CRUD (ผูกกับปี/ชีท) ===== */
 async function loadRecords() {
-  const res = await jsonp({ action:'get' });
+  const res = await jsonp({ action:'get', sheet: currentFY });
   allRecords = Array.isArray(res.data) ? res.data : [];
-  filteredRecords = allRecords.slice();
-  renderTable(); renderSummary();
+  // ถ้า backend ส่งรวมหลายปีไว้ (เผื่อ) — กรองซ้ำอีกชั้น
+  filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
+  renderTable(); 
+  renderSummary(); // (3) ยอดรวมตามหมวดเงิน เฉพาะปีที่เลือก
 }
 
 async function onSubmit(e) {
@@ -80,12 +159,16 @@ async function onSubmit(e) {
     category: v('category'), amount: parseFloat(v('amount'))||0,
     month: v('month'), note: v('note'), status:'pending'
   };
+  // บังคับให้ budgetYear = แท็บปัจจุบัน เพื่อไม่ให้หลุดปี
+  record.budgetYear = currentFY;
+  setBudgetYearInput();
+
   Swal.fire({ title:'กำลังบันทึก...', allowOutsideClick:false, didOpen:() => Swal.showLoading() });
   try {
-    await jsonp({ action:'add', ...record });
+    await jsonp({ action:'add', sheet: currentFY, ...record }); // (2) ส่ง sheet ไป backend
     Swal.close();
     Swal.fire({ icon:'success', title:'บันทึกสำเร็จ', timer:1000, showConfirmButton:false });
-    e.target.reset(); prefillDefaults(); await loadRecords();
+    e.target.reset(); prefillDefaults(); setBudgetYearInput(); await loadRecords();
   } catch (err) {
     Swal.close(); Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:String(err) });
   }
@@ -93,8 +176,9 @@ async function onSubmit(e) {
 
 async function changeStatus(id, newStatus) {
   try {
-    await jsonp({ action:'update', id, status:newStatus });
+    await jsonp({ action:'update', sheet: currentFY, id, status:newStatus });
     const rec = allRecords.find(r => r.id === id); if (rec) rec.status = newStatus;
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
     renderTable(); renderSummary();
     Swal.fire({ icon:'success', title:'อัปเดตสถานะแล้ว', timer:900, showConfirmButton:false });
   } catch (err) {
@@ -106,8 +190,9 @@ async function removeRecord(id) {
   const ok = await Swal.fire({ title:'ยืนยันการลบ?', icon:'warning', showCancelButton:true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#ef4444' });
   if (!ok.isConfirmed) return;
   try {
-    await jsonp({ action:'delete', id });
-    allRecords = allRecords.filter(r => r.id !== id); filteredRecords = allRecords.slice();
+    await jsonp({ action:'delete', sheet: currentFY, id });
+    allRecords = allRecords.filter(r => r.id !== id);
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
     renderTable(); renderSummary();
     Swal.fire({ icon:'success', title:'ลบสำเร็จ', timer:900, showConfirmButton:false });
   } catch (err) {
@@ -124,7 +209,7 @@ function openEditModal(id){
   g('edit_teacher').value = r.teacher || '';
   g('edit_semester').value = r.semester || 'ภาคการศึกษาที่ 1';
   g('edit_academicYear').value = r.academicYear || '';
-  g('edit_budgetYear').value = r.budgetYear || '';
+  g('edit_budgetYear').value = currentFY; // ยึดตามแท็บ
   g('edit_category').value = r.category || '';
   g('edit_amount').value = r.amount || 0;
   g('edit_month').value = r.month || '';
@@ -142,7 +227,7 @@ async function onEditSubmit(e){
     teacher: v('edit_teacher'),
     semester: v('edit_semester'),
     academicYear: v('edit_academicYear'),
-    budgetYear: v('edit_budgetYear'),
+    budgetYear: currentFY, // ล็อกตามปีงบแท็บ
     category: v('edit_category'),
     amount: parseFloat(v('edit_amount'))||0,
     month: v('edit_month'),
@@ -150,10 +235,10 @@ async function onEditSubmit(e){
   };
   Swal.fire({ title:'กำลังบันทึกการแก้ไข...', allowOutsideClick:false, didOpen:() => Swal.showLoading() });
   try {
-    await jsonp({ action:'update', ...payload });
+    await jsonp({ action:'update', sheet: currentFY, ...payload });
     const idx = allRecords.findIndex(r=>r.id===id);
     if (idx > -1) allRecords[idx] = { ...allRecords[idx], ...payload };
-    filteredRecords = allRecords.slice();
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
     renderTable(); renderSummary(); closeEditModal();
     Swal.close(); Swal.fire({ icon:'success', title:'แก้ไขสำเร็จ', timer:900, showConfirmButton:false });
   } catch (err) {
@@ -170,7 +255,7 @@ function renderSummary() {
   g('totalRecords').textContent = (filteredRecords||[]).length + ' รายการ';
   g('completedRecords').textContent = done + ' รายการ';
 
-  // --- คำนวณยอดรวมแยกตามหมวดเงิน ---
+  // --- คำนวณยอดรวมแยกตามหมวดเงิน (เฉพาะปีที่เลือก) ---
   const categoryTotals = {};
   (filteredRecords||[]).forEach(r => {
     const cat = r.category || 'ไม่ระบุ';
@@ -178,13 +263,10 @@ function renderSummary() {
     categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
   });
 
-  // --- สร้างข้อความแสดงผล ---
   const lines = Object.entries(categoryTotals)
     .map(([cat, amt]) => `• ${cat}: ${amt.toLocaleString()} บาท`);
 
-  g('categorySummary').innerHTML = lines.length
-    ? lines.join('<br>')
-    : '- ยังไม่มีข้อมูล -';
+  g('categorySummary').innerHTML = lines.length ? lines.join('<br>') : '- ยังไม่มีข้อมูล -';
 }
 
 function renderTable() {
@@ -225,25 +307,30 @@ function esc(s){
   }[m]));
 }
 
+function setBudgetYearInput() {
+  if (g('budgetYear'))   g('budgetYear').value   = currentFY;
+  if (g('edit_budgetYear')) g('edit_budgetYear').value = currentFY;
+  const label = g('currentFYLabel'); if (label) label.textContent = currentFY;
+}
+
 function prefillDefaults() {
   const now = new Date(), gYear = now.getFullYear(), bYear = gYear + 543, m = now.getMonth()+1;
-  const academicYear = (m >= 8) ? bYear : (bYear - 1);
-  const budgetYear   = (m >= 10) ? (bYear + 1) : bYear;
-  const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  const academicYear = (m >= 8) ? bYear : (bYear - 1); // ปีการศึกษาเริ่ม ส.ค./ก.ย. (ตามเดิม)
   if (g('academicYear')) g('academicYear').value = academicYear;
-  if (g('budgetYear'))   g('budgetYear').value   = budgetYear;
-  if (g('month'))        g('month').value        = thMonths[m-1];
+  setBudgetYearInput(); // ใช้ปีงบตามแท็บเสมอ
+  const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  if (g('month')) g('month').value = thMonths[m-1];
 }
 
 function exportCSV() {
-  const rows = [['ID','รายวิชา','อาจารย์','ภาคการศึกษา','ปีการศึกษา','ปีงบประมาณ','หมวดเงิน','เดือนที่เบิก','จำนวนเงิน','สถานะ','หมายเหตุ','วันที่บันทึก','รวมเป็นเงิน','ผู้บันทึก']];
+  const rows = [['ID','รายวิชา','อาจารย์','ภาคการศึกษา','ปีการศึกษา','ปีงบประมาณ','หมวดเงิน','เดือนที่เบิก','จำนวนเงิน','สถานะ','รายการ','วันที่บันทึก','รวมเป็นเงิน','ผู้บันทึก']];
   (filteredRecords||[]).forEach(r=>{
     rows.push([r.id,r.subject,r.teacher,r.semester,r.academicYear,r.budgetYear,r.category,r.month,r.amount,r.status,r.note,(r.timestamp?new Date(r.timestamp).toLocaleString('th-TH'):''),r.total,r.recorder]);
   });
   const csv = rows.map(a => a.map(x => `"${String(x ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
   const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'ค่าสอน.csv'; a.click(); URL.revokeObjectURL(url);
+  const a = document.createElement('a'); a.href = url; a.download = `ค่าสอน_FY${currentFY}.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
 /* เผยฟังก์ชันให้ปุ่มใน HTML เรียกได้ */
