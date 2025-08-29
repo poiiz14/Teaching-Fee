@@ -1,181 +1,432 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎓 ระบบติดตามการส่งค่าสอนออนไลน์</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:,">
-  <style>
-    body { font-family: 'Sarabun', sans-serif; }
-    .pastel-bg { background: linear-gradient(135deg,#ffeef8 0%,#f0f9ff 50%,#f0fdf4 100%); }
-    .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-    .status-pill { border:0; border-radius:9999px; padding:4px 10px; font-weight:600; font-size:12px; }
-    .status-pending { background: linear-gradient(45deg,#fef3c7,#fde68a); }
-    .status-processing { background: linear-gradient(45deg,#dbeafe,#bfdbfe); }
-    .status-revision { background: linear-gradient(45deg,#fed7d7,#fbb6ce); }
-    .status-recheck { background: linear-gradient(45deg,#e0e7ff,#c7d2fe); }
-    .status-finance { background: linear-gradient(45deg,#d1fae5,#a7f3d0); }
-    .status-completed { background: linear-gradient(45deg,#dcfce7,#bbf7d0); }
-    .modal-bg{ background: rgba(0,0,0,.35); }
-    .fy-tab { padding:.5rem 1rem; border-radius:.5rem .5rem 0 0; background:#f3e8ff; color:#6b21a8; font-weight:600; }
-    .fy-tab.active { background:#fff; border:1px solid #e9d5ff; border-bottom:0; color:#4c1d95; }
-  </style>
-</head>
-<body class="pastel-bg min-h-screen">
-  <div class="container mx-auto px-4 py-8">
-    <div class="text-center mb-6">
-      <h1 class="text-4xl font-bold text-purple-800 mb-2">🎓 ระบบติดตามการส่งค่าสอนออนไลน์</h1>
-      <p class="text-purple-600">ติดตามการส่งค่าตอบแทนอาจารย์พิเศษ</p>
-    </div>
+/* ===== CONFIG ===== */
+let SCRIPT_URL = 'PUT_YOUR_APPS_SCRIPT_URL_HERE'; // <- ใส่ของปอย
+const hashApi = new URLSearchParams(location.hash.replace('#','')).get('api');
+if (hashApi) SCRIPT_URL = hashApi;
 
-    <!-- แท็บปีงบประมาณ -->
-    <div class="bg-white rounded-2xl card-shadow mb-6">
-      <div class="px-4 pt-3 border-b border-purple-100 flex items-center justify-between">
-        <div class="flex items-end gap-2" id="fyTabs"></div>
-        <div class="py-2">
-          <button id="addFYBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg text-sm">+ เพิ่มปีงบฯ</button>
-        </div>
-      </div>
-      <div class="px-4 pb-3 text-sm text-slate-500">
-        ปีงบฯ ปัจจุบัน: <span id="currentFYLabel" class="font-semibold text-purple-700"></span>
-      </div>
-    </div>
+/* ปีงบประมาณไทย: เริ่ม 1 ต.ค. และไม่ต่ำกว่า 2568 */
+function guessFiscalYearTH() {
+  const d = new Date();
+  const be = d.getFullYear() + 543;
+  const m = d.getMonth();
+  return Math.max((m >= 9 ? be + 1 : be), 2568);
+}
 
-    <!-- ฟอร์มเพิ่ม -->
-    <div class="bg-white rounded-2xl card-shadow p-6 mb-8">
-      <h2 class="text-2xl font-semibold text-purple-800 mb-6">➕ เพิ่มรายการใหม่</h2>
-      <form id="recordForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="subject" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="teacher" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div>
-          <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
-          <select id="semester" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required>
-            <option value="">เลือกภาคการศึกษา</option>
-            <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
-            <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
-            <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
-          </select>
-        </div>
-        <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="academicYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">ปีงบประมาณ</label><input id="budgetYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="category" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="amount" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="month" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">รายการ</label><input id="note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
-        <div class="md:col-span-2 lg:col-span-3">
-          <button type="submit" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg">💾 บันทึกข้อมูล</button>
-        </div>
-      </form>
-    </div>
+/* รายการปีในแท็บ */
+const defaultFY = guessFiscalYearTH();
+let FY_LIST = JSON.parse(localStorage.getItem('fyList') || '[]');
+if (!FY_LIST.length) {
+  const maxFY = Math.max(defaultFY, 2569);
+  for (let y = 2568; y <= maxFY; y++) FY_LIST.push(String(y));
+}
+let currentFY = localStorage.getItem('currentFY') || String(defaultFY);
 
-    <!-- สรุปตัวเลข -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-      <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow">
-        <h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3>
-        <p id="totalAmount" class="text-3xl font-bold text-blue-900">0 บาท</p>
-      </div>
-      <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 card-shadow">
-        <h3 class="text-lg font-semibold text-green-800 mb-2">📊 จำนวนรายการ</h3>
-        <p id="totalRecords" class="text-3xl font-bold text-green-900">0 รายการ</p>
-      </div>
-      <div class="bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl p-6 card-shadow">
-        <h3 class="text-lg font-semibold text-pink-800 mb-2">✅ เสร็จสิ้นแล้ว</h3>
-        <p id="completedRecords" class="text-3xl font-bold text-pink-900">0 รายการ</p>
-      </div>
-      <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 card-shadow">
-        <h3 class="text-lg font-semibold text-purple-800 mb-2">📂 ยอดรวมตามหมวดเงิน</h3>
-        <div id="categorySummary" class="text-purple-900 text-sm leading-6">- ยังไม่มีข้อมูล -</div>
-      </div>
-    </div>
+/* ====== Budget Targets (ตั้งยอดตั้งต้น) ====== */
+/* เก็บใน localStorage: key = 'budgetTargets'  โครงสร้าง {หมวดเงิน: จำนวน} */
+function getTargets(){
+  try { return JSON.parse(localStorage.getItem('budgetTargets')||'{}'); }
+  catch { return {}; }
+}
+function setTargets(obj){
+  localStorage.setItem('budgetTargets', JSON.stringify(obj||{}));
+}
+function upsertTarget(cat, amt){
+  const t = getTargets();
+  t[String(cat||'').trim()] = Math.max(Number(amt)||0, 0);
+  setTargets(t);
+}
+function deleteTarget(cat){
+  const t = getTargets();
+  delete t[cat];
+  setTargets(t);
+}
 
-    <!-- ตั้งยอดตั้งต้น + กราฟ -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-      <!-- จัดการยอดตั้งต้น -->
-      <div class="bg-white rounded-2xl card-shadow p-6">
-        <h3 class="text-xl font-semibold text-purple-800 mb-4">⚙️ ตั้งยอดตั้งต้นตามหมวดเงิน</h3>
-        <div class="flex gap-3 mb-4">
-          <input id="newTargetCategory" class="flex-1 px-3 py-2 border border-purple-200 rounded-lg" placeholder="ชื่อหมวดเงิน (เช่น รายได้สถานบัน)">
-          <input id="newTargetAmount" type="number" class="w-40 px-3 py-2 border border-purple-200 rounded-lg" placeholder="จำนวน (บาท)">
-          <button id="addTargetBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg">เพิ่ม</button>
-        </div>
-        <div id="budgetTargetsList" class="space-y-2 text-sm"></div>
-      </div>
+/* ====== หน้าจัดการยอดตั้งต้น ====== */
+function renderTargetsUI(){
+  const box = document.getElementById('budgetTargetsList');
+  if (!box) return;
+  const t = getTargets();
+  const cats = Object.keys(t);
+  box.innerHTML = cats.length ? '' : '<div class="text-slate-500">ยังไม่มียอดตั้งต้น</div>';
 
-      <!-- กราฟการใช้เงิน -->
-      <div class="bg-white rounded-2xl card-shadow p-6">
-        <h3 class="text-xl font-semibold text-purple-800 mb-4">📊 การใช้เงินตามหมวด (เทียบยอดตั้งต้น)</h3>
-        <canvas id="budgetChart" height="140"></canvas>
-      </div>
-    </div>
+  cats.sort().forEach(cat => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-3';
+    row.innerHTML = `
+      <div class="flex-1">${cat}</div>
+      <input type="number" class="w-40 px-2 py-1 border rounded" value="${t[cat]}" data-cat="${cat}">
+      <button class="px-3 py-1 rounded bg-red-100 text-red-600 text-xs" data-del="${cat}">ลบ</button>
+    `;
+    box.appendChild(row);
+  });
 
-    <!-- ตาราง -->
-    <div class="bg-white rounded-2xl card-shadow overflow-hidden">
-      <div class="p-6 border-b border-gray-200 flex items-center justify-between">
-        <h3 class="text-xl font-semibold text-purple-800">📋 รายการข้อมูล</h3>
-        <button onclick="exportCSV()" class="bg-purple-100 hover:bg-purple-200 text-purple-700 px-3 py-1 rounded-lg text-sm">⬇️ ส่งออก CSV</button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead class="bg-gradient-to-r from-purple-50 to-pink-50">
-            <tr>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ลำดับ</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">รายวิชา</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">อาจารย์</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ภาคการศึกษา</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ปีการศึกษา</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมวดเงิน</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">เดือนที่เบิก</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จำนวนเงิน</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">รายการ</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">สถานะ</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="recordsTable"></tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+  // on-change บันทึกทันที
+  box.querySelectorAll('input[type="number"]').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const cat = inp.dataset.cat;
+      upsertTarget(cat, inp.value);
+      renderSummary(); // อัปเดตกราฟ/เปอร์เซ็นต์
+    });
+  });
+  // ลบ
+  box.querySelectorAll('button[data-del]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      deleteTarget(btn.dataset.del);
+      renderTargetsUI();
+      renderSummary();
+    });
+  });
+}
 
-  <div id="editModal" class="hidden fixed inset-0 z-50 modal-bg flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-4xl w-full card-shadow">
-      <div class="px-6 py-4 border-b flex items-center justify-between">
-        <h3 class="text-xl font-semibold text-purple-800">✏️ แก้ไขรายการ</h3>
-        <button class="text-gray-500 hover:text-gray-800" onclick="closeEditModal()">✖</button>
-      </div>
-      <div class="p-6">
-        <form id="editForm" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <input type="hidden" id="edit_id">
-          <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="edit_subject" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="edit_teacher" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div>
-            <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
-            <select id="edit_semester" class="w-full px-3 py-2 border rounded-lg" required>
-              <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
-              <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
-              <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
-            </select>
-          </div>
-          <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="edit_academicYear" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">ปีงบประมาณ</label><input id="edit_budgetYear" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="edit_category" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="edit_amount" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="edit_month" class="w-full px-3 py-2 border rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">รายการ</label><input id="edit_note" class="w-full px-3 py-2 border rounded-lg"></div>
-          <div class="md:col-span-2 lg:col-span-3 flex gap-3">
-            <button class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg" type="submit">💾 บันทึกการแก้ไข</button>
-            <button class="bg-gray-100 px-6 py-3 rounded-lg" type="button" onclick="closeEditModal()">ยกเลิก</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+function bindTargetCreator(){
+  const addBtn = document.getElementById('addTargetBtn');
+  if (!addBtn) return;
+  addBtn.addEventListener('click', ()=>{
+    const cat = document.getElementById('newTargetCategory').value.trim();
+    const amt = Number(document.getElementById('newTargetAmount').value||0);
+    if (!cat) { Swal.fire({icon:'warning',title:'กรอกชื่อหมวดเงินก่อน'}); return; }
+    upsertTarget(cat, amt);
+    document.getElementById('newTargetCategory').value = '';
+    document.getElementById('newTargetAmount').value = '';
+    renderTargetsUI();
+    renderSummary();
+  });
+}
 
-  <script defer src="./app.js"></script>
-</body>
-</html>
+/* ====== สถานะ ====== */
+const statusOptions = [
+  { value: 'pending',    label:'ส่งงานวิชาการแล้ว',      class:'status-pending' },
+  { value: 'processing', label:'อยู่ระหว่างส่งงานการเงินตรวจ', class:'status-processing' },
+  { value: 'revision',   label:'ส่งกลับแก้ไข',             class:'status-revision' },
+  { value: 'recheck',    label:'ส่งตรวจอีกครั้ง',           class:'status-recheck' },
+  { value: 'finance',    label:'ส่งเบิกที่การเงินแล้ว',      class:'status-finance' },
+  { value: 'completed',  label:'ตัดจ่ายเงินแล้ว',           class:'status-completed' }
+];
 
+let allRecords = [], filteredRecords = [];
+let chartInstance = null;
+
+/* ====== Init ====== */
+document.addEventListener('DOMContentLoaded', async () => {
+  renderFYTabs();
+  setBudgetYearInput();
+  prefillDefaults();
+  attachEvents();
+  bindTargetCreator();
+  renderTargetsUI();
+
+  try { await healthCheck(); await loadRecords(); }
+  catch(e) {}
+});
+
+function attachEvents() {
+  const f1 = document.getElementById('recordForm');
+  if (f1) f1.addEventListener('submit', onSubmit);
+  const f2 = document.getElementById('editForm');
+  if (f2) f2.addEventListener('submit', onEditSubmit);
+
+  const addBtn = document.getElementById('addFYBtn');
+  if (addBtn) addBtn.addEventListener('click', onAddFY);
+}
+
+/* ====== Tabs ====== */
+function renderFYTabs() {
+  const wrap = document.getElementById('fyTabs');
+  const label = document.getElementById('currentFYLabel');
+  if (!wrap) return;
+
+  wrap.innerHTML = '';
+  FY_LIST.forEach(fy => {
+    const btn = document.createElement('button');
+    btn.className = 'fy-tab' + (fy === currentFY ? ' active' : '');
+    btn.dataset.fy = fy;
+    btn.textContent = fy;
+    btn.addEventListener('click', async () => {
+      if (currentFY === fy) return;
+      currentFY = fy;
+      localStorage.setItem('currentFY', currentFY);
+      setBudgetYearInput();
+      renderFYTabs();
+      await loadRecords();
+    });
+    wrap.appendChild(btn);
+  });
+  if (label) label.textContent = currentFY;
+}
+
+function onAddFY() {
+  Swal.fire({
+    title: 'เพิ่มปีงบประมาณ',
+    input: 'number',
+    inputLabel: 'ระบุปีงบฯ (เช่น 2569)',
+    inputValue: Math.max(Number(FY_LIST[FY_LIST.length-1]||currentFY)+1, 2568),
+    showCancelButton: true,
+    confirmButtonText: 'เพิ่ม',
+    cancelButtonText: 'ยกเลิก',
+    inputValidator: (v) => {
+      const n = Number(v);
+      if (!n || n < 2568) return 'ปีงบฯ ต้องเป็นตัวเลขตั้งแต่ 2568 ขึ้นไป';
+    }
+  }).then(res => {
+    if (!res.isConfirmed) return;
+    const fy = String(res.value);
+    if (!FY_LIST.includes(fy)) {
+      FY_LIST.push(fy);
+      FY_LIST.sort();
+      localStorage.setItem('fyList', JSON.stringify(FY_LIST));
+    }
+    currentFY = fy;
+    localStorage.setItem('currentFY', currentFY);
+    setBudgetYearInput();
+    renderFYTabs();
+    loadRecords();
+  });
+}
+
+/* ===== JSONP helper ===== */
+function jsonp(params) {
+  return new Promise((resolve, reject) => {
+    if (!SCRIPT_URL || !/^https?:\/\//.test(SCRIPT_URL)) { reject(new Error('SCRIPT_URL ไม่ถูกต้อง')); return; }
+    const cb = 'jsonp_cb_' + Math.random().toString(36).slice(2);
+    params.callback = cb;
+    const s = document.createElement('script');
+    s.src = SCRIPT_URL + '?' + new URLSearchParams(params).toString();
+    window[cb] = (data) => { delete window[cb]; s.remove();
+      if (data && data.result === 'success') resolve(data);
+      else reject(new Error((data && data.error) || 'Unknown error')); };
+    s.onerror = () => { delete window[cb]; s.remove(); reject(new Error('Network error')); };
+    document.body.appendChild(s);
+  });
+}
+
+async function healthCheck(){
+  try { await jsonp({action:'ping'}); return true; }
+  catch {
+    try { await jsonp({action:'get', sheet: currentFY}); return true; }
+    catch(e){ Swal.fire({icon:'error',title:'เชื่อมต่อ API ไม่ได้', text:e.message||e}); throw e; }
+  }
+}
+
+/* ===== CRUD (ผูกปี/ชีท) ===== */
+async function loadRecords() {
+  const res = await jsonp({ action:'get', sheet: currentFY });
+  allRecords = Array.isArray(res.data) ? res.data : [];
+  filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
+  renderTable();
+  renderSummary();
+}
+
+async function onSubmit(e) {
+  e.preventDefault();
+  const record = {
+    subject: v('subject'), teacher: v('teacher'), semester: v('semester'),
+    academicYear: v('academicYear'), budgetYear: currentFY,
+    category: v('category'), amount: parseFloat(v('amount'))||0,
+    month: v('month'), note: v('note'), status:'pending'
+  };
+  Swal.fire({ title:'กำลังบันทึก...', allowOutsideClick:false, didOpen:() => Swal.showLoading() });
+  try {
+    await jsonp({ action:'add', sheet: currentFY, ...record });
+    Swal.close(); Swal.fire({ icon:'success', title:'บันทึกสำเร็จ', timer:1000, showConfirmButton:false });
+    e.target.reset(); prefillDefaults(); setBudgetYearInput(); await loadRecords();
+  } catch (err) {
+    Swal.close(); Swal.fire({ icon:'error', title:'บันทึกไม่สำเร็จ', text:String(err) });
+  }
+}
+
+async function changeStatus(id, newStatus) {
+  try {
+    await jsonp({ action:'update', sheet: currentFY, id, status:newStatus });
+    const rec = allRecords.find(r => r.id === id); if (rec) rec.status = newStatus;
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
+    renderTable(); renderSummary();
+    Swal.fire({ icon:'success', title:'อัปเดตสถานะแล้ว', timer:900, showConfirmButton:false });
+  } catch (err) { Swal.fire({ icon:'error', title:'อัปเดตไม่สำเร็จ', text:String(err) }); }
+}
+
+async function removeRecord(id) {
+  const ok = await Swal.fire({ title:'ยืนยันการลบ?', icon:'warning', showCancelButton:true, confirmButtonText:'ลบ', cancelButtonText:'ยกเลิก', confirmButtonColor:'#ef4444' });
+  if (!ok.isConfirmed) return;
+  try {
+    await jsonp({ action:'delete', sheet: currentFY, id });
+    allRecords = allRecords.filter(r => r.id !== id);
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
+    renderTable(); renderSummary();
+    Swal.fire({ icon:'success', title:'ลบสำเร็จ', timer:900, showConfirmButton:false });
+  } catch (err) { Swal.fire({ icon:'error', title:'ลบไม่สำเร็จ', text:String(err) }); }
+}
+
+/* ===== Edit (Modal) ===== */
+function openEditModal(id){
+  const r = allRecords.find(x => x.id === id);
+  if (!r) return;
+  g('edit_id').value = r.id;
+  g('edit_subject').value = r.subject || '';
+  g('edit_teacher').value = r.teacher || '';
+  g('edit_semester').value = r.semester || 'ภาคการศึกษาที่ 1';
+  g('edit_academicYear').value = r.academicYear || '';
+  g('edit_budgetYear').value = currentFY;
+  g('edit_category').value = r.category || '';
+  g('edit_amount').value = r.amount || 0;
+  g('edit_month').value = r.month || '';
+  g('edit_note').value = r.note || '';
+  g('editModal').classList.remove('hidden');
+}
+function closeEditModal(){ g('editModal').classList.add('hidden'); }
+
+async function onEditSubmit(e){
+  e.preventDefault();
+  const id = g('edit_id').value;
+  const payload = {
+    id,
+    subject: v('edit_subject'),
+    teacher: v('edit_teacher'),
+    semester: v('edit_semester'),
+    academicYear: v('edit_academicYear'),
+    budgetYear: currentFY,
+    category: v('edit_category'),
+    amount: parseFloat(v('edit_amount'))||0,
+    month: v('edit_month'),
+    note: v('edit_note')
+  };
+  Swal.fire({ title:'กำลังบันทึกการแก้ไข...', allowOutsideClick:false, didOpen:() => Swal.showLoading() });
+  try {
+    await jsonp({ action:'update', sheet: currentFY, ...payload });
+    const idx = allRecords.findIndex(r=>r.id===id);
+    if (idx > -1) allRecords[idx] = { ...allRecords[idx], ...payload };
+    filteredRecords = allRecords.filter(r => String(r.budgetYear||'') === String(currentFY));
+    renderTable(); renderSummary(); closeEditModal();
+    Swal.close(); Swal.fire({ icon:'success', title:'แก้ไขสำเร็จ', timer:900, showConfirmButton:false });
+  } catch (err) { Swal.close(); Swal.fire({ icon:'error', title:'แก้ไขไม่สำเร็จ', text:String(err) }); }
+}
+
+/* ===== Render ===== */
+function renderSummary() {
+  const total = (filteredRecords||[]).reduce((s,r)=> s + (Number(r.amount)||0), 0);
+  const done = (filteredRecords||[]).filter(r=>r.status==='completed').length;
+
+  g('totalAmount').textContent = total.toLocaleString() + ' บาท';
+  g('totalRecords').textContent = (filteredRecords||[]).length + ' รายการ';
+  g('completedRecords').textContent = done + ' รายการ';
+
+  // รวมยอดตามหมวด (เฉพาะปีนี้)
+  const categoryTotals = {};
+  (filteredRecords||[]).forEach(r => {
+    const cat = r.category || 'ไม่ระบุ';
+    const amt = Number(r.amount) || 0;
+    categoryTotals[cat] = (categoryTotals[cat] || 0) + amt;
+  });
+
+  // แสดงข้อความสรุป
+  const lines = Object.entries(categoryTotals)
+    .map(([cat, amt]) => `• ${cat}: ${amt.toLocaleString()} บาท`);
+  g('categorySummary').innerHTML = lines.length ? lines.join('<br>') : '- ยังไม่มีข้อมูล -';
+
+  // เตรียมข้อมูลกราฟ + เปอร์เซ็นต์เทียบยอดตั้งต้น
+  const targets = getTargets();
+  const labels = [];
+  const used = [];
+  const targetVals = [];
+  const percents = [];
+
+  Object.entries(categoryTotals).forEach(([cat, amt])=>{
+    const t = Number(targets[cat]||0);
+    labels.push(cat);
+    used.push(amt);
+    targetVals.push(t);
+    percents.push(t>0 ? (amt/t*100) : 0);
+  });
+
+  drawBudgetChart(labels, used, targetVals, percents);
+}
+
+function drawBudgetChart(labels, used, targets, percents){
+  const el = document.getElementById('budgetChart');
+  if (!el) return;
+  const ctx = el.getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'ใช้ไป (บาท)', data: used, backgroundColor: '#a78bfa' },
+        { label: 'ยอดตั้งต้น (บาท)', data: targets, backgroundColor: '#e9d5ff' }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            afterBody: (items)=>{
+              const idx = items[0].dataIndex;
+              return `ใช้ไป: ${Number(percents[idx]).toFixed(2)}%`;
+            }
+          }
+        },
+        legend: { position: 'top' }
+      },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+
+function renderTable() {
+  const tb = g('recordsTable'); if (!tb) return; tb.innerHTML = '';
+  (filteredRecords||[]).forEach((r,i) => {
+    const opt = statusOptions.find(s => s.value===r.status) || statusOptions[0];
+    const tr = document.createElement('tr');
+    tr.className = 'border-b border-gray-100 hover:bg-purple-50 transition-colors';
+    tr.innerHTML = `
+      <td class="px-4 py-3 text-sm">${i+1}</td>
+      <td class="px-4 py-3 text-sm font-medium">${esc(r.subject||'')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.teacher||'')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.semester||'')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.academicYear||'')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.category||'')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.month||'')}</td>
+      <td class="px-4 py-3 text-sm font-semibold text-green-600">${(Number(r.amount)||0).toLocaleString()} บาท</td>
+      <td class="px-4 py-3 text-sm">${esc(r.note || '')}</td>
+      <td class="px-4 py-3">
+        <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
+          ${statusOptions.map(s=>`<option value="${s.value}" ${r.status===s.value?'selected':''}>${s.label}</option>`).join('')}
+        </select>
+      </td>
+      <td class="px-4 py-3 flex gap-2">
+        <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium" onclick="openEditModal('${r.id}')">✏️ แก้ไข</button>
+        <button class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded-lg text-xs font-medium" onclick="removeRecord('${r.id}')">🗑️ ลบ</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+}
+
+/* ===== Utils ===== */
+function g(id){ return document.getElementById(id); }
+function v(id){ const el = g(id); return el ? el.value.trim() : ''; }
+function esc(s){ return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function setBudgetYearInput(){ if (g('budgetYear')) g('budgetYear').value = currentFY; if (g('edit_budgetYear')) g('edit_budgetYear').value = currentFY; const label=g('currentFYLabel'); if (label) label.textContent=currentFY; }
+function prefillDefaults(){
+  const now = new Date(), gYear = now.getFullYear(), bYear = gYear + 543, m = now.getMonth()+1;
+  const academicYear = (m >= 8) ? bYear : (bYear - 1);
+  if (g('academicYear')) g('academicYear').value = academicYear;
+  const thMonths = ['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+  if (g('month')) g('month').value = thMonths[m-1];
+}
+function exportCSV(){
+  const rows = [['ID','รายวิชา','อาจารย์','ภาคการศึกษา','ปีการศึกษา','ปีงบประมาณ','หมวดเงิน','เดือนที่เบิก','จำนวนเงิน','สถานะ','รายการ','วันที่บันทึก','รวมเป็นเงิน','ผู้บันทึก']];
+  (filteredRecords||[]).forEach(r=>{
+    rows.push([r.id,r.subject,r.teacher,r.semester,r.academicYear,r.budgetYear,r.category,r.month,r.amount,r.status,r.note,(r.timestamp?new Date(r.timestamp).toLocaleString('th-TH'):''),r.total,r.recorder]);
+  });
+  const csv = rows.map(a => a.map(x => `"${String(x ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `ค่าสอน_FY${currentFY}.csv`; a.click(); URL.revokeObjectURL(url);
+}
+
+/* เผยฟังก์ชันให้ปุ่มเรียกได้ */
+window.changeStatus = changeStatus;
+window.removeRecord = removeRecord;
+window.openEditModal = openEditModal;
+window.closeEditModal = closeEditModal;
+window.exportCSV = exportCSV;
