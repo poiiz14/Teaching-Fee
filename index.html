@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ระบบติดตามการส่งค่าสอนออนไลน์</title>
+  <title>ระบบส่งค่าสอนออนไลน์</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -34,15 +34,8 @@
 
     <!-- แท็บปีงบประมาณ -->
     <div class="bg-white rounded-2xl card-shadow mb-6">
-      <div class="px-4 pt-3 border-b border-purple-100 flex items-center justify-between gap-3 flex-wrap">
+      <div class="px-4 pt-3 border-b border-purple-100 flex items-center justify-between">
         <div class="flex items-end gap-2" id="fyTabs"></div>
-
-        <!-- ช่องอีเมลผู้ใช้เพื่อใช้ตรวจสิทธิ์ -->
-        <div class="flex items-center gap-2">
-          <input id="userEmail" class="px-3 py-2 border border-purple-200 rounded-lg text-sm" placeholder="อีเมลผู้ใช้งาน (สำหรับสิทธิ์)">
-          <button id="saveEmailBtn" class="bg-purple-600 text-white px-3 py-2 rounded-lg text-sm">บันทึก</button>
-        </div>
-
         <div class="py-2">
           <button id="addFYBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg text-sm">+ เพิ่มปีงบฯ</button>
         </div>
@@ -103,7 +96,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
       <!-- จัดการยอดตั้งต้น -->
       <div class="bg-white rounded-2xl card-shadow p-6">
-        <h3 class="text-xl font-semibold text-purple-800 mb-4">⚙️ เงินงบประมาณตามหมวดเงิน</h3>
+        <h3 class="text-xl font-semibold text-purple-800 mb-4">⚙️ ตั้งยอดตั้งต้นตามหมวดเงิน</h3>
         <div class="flex gap-3 mb-4">
           <input id="newTargetCategory" class="flex-1 px-3 py-2 border border-purple-200 rounded-lg" placeholder="ชื่อหมวดเงิน (เช่น รายได้สถานบัน)">
           <input id="newTargetAmount" type="number" class="w-40 px-3 py-2 border border-purple-200 rounded-lg" placeholder="จำนวน (บาท)">
@@ -114,7 +107,7 @@
 
       <!-- กราฟการใช้เงิน -->
       <div class="bg-white rounded-2xl card-shadow p-6">
-        <h3 class="text-xl font-semibold text-purple-800 mb-4">📊 การใช้เงินตามหมวด (ค่าสอน งบประมาณ 2568)</h3>
+        <h3 class="text-xl font-semibold text-purple-800 mb-4">📊 การใช้เงินตามหมวด (เทียบยอดตั้งต้น)</h3>
         <canvas id="budgetChart" height="140"></canvas>
       </div>
     </div>
@@ -181,9 +174,7 @@
       </div>
     </div>
   </div>
-<!-- อย่าลืม Chart.js และ app.js ตามที่ใช้อยู่ -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <script defer src="./app.js"></script>
 </body>
 </html>
-
