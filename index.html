@@ -52,12 +52,12 @@
         <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="subject" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
         <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="teacher" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
         <div>
-          <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
+          <label class="block text-sm font-medium mb-2">ภาคการศึกษาที่</label>
           <select id="semester" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required>
             <option value="">เลือกภาคการศึกษา</option>
-            <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
-            <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
-            <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="ฤดูร้อน">ฤดูร้อน</option>
           </select>
         </div>
         <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="academicYear" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
@@ -125,7 +125,7 @@
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ลำดับ</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">รายวิชา</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">อาจารย์</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ภาคการศึกษา</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ภาคการศึกษาที่</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">ปีการศึกษา</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมวดเงิน</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">เดือนที่เบิก</th>
@@ -153,11 +153,11 @@
           <div><label class="block text-sm font-medium mb-2">ชื่อรายวิชา</label><input id="edit_subject" class="w-full px-3 py-2 border rounded-lg" required></div>
           <div><label class="block text-sm font-medium mb-2">ชื่อ-สกุล อาจารย์พิเศษ</label><input id="edit_teacher" class="w-full px-3 py-2 border rounded-lg" required></div>
           <div>
-            <label class="block text-sm font-medium mb-2">ภาคการศึกษา</label>
+            <label class="block text-sm font-medium mb-2">ภาคการศึกษาที่</label>
             <select id="edit_semester" class="w-full px-3 py-2 border rounded-lg" required>
-              <option value="ภาคการศึกษาที่ 1">ภาคการศึกษาที่ 1</option>
-              <option value="ภาคการศึกษาที่ 2">ภาคการศึกษาที่ 2</option>
-              <option value="ภาคการศึกษาฤดูร้อน">ภาคการศึกษาฤดูร้อน</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="ฤดูร้อน">ฤดูร้อน</option>
             </select>
           </div>
           <div><label class="block text-sm font-medium mb-2">ปีการศึกษา</label><input id="edit_academicYear" type="number" class="w-full px-3 py-2 border rounded-lg" required></div>
@@ -178,4 +178,5 @@
   <script defer src="./app.js"></script>
 </body>
 </html>
+
 
