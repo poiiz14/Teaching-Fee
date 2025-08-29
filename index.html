@@ -23,13 +23,28 @@
     .modal-bg{ background: rgba(0,0,0,.35); }
     #apiInfo{ font-size:12px; color:#64748b }
     #apiInfo { display: none !important; }
+    .fy-tab { padding: .5rem 1rem; border-radius: .5rem .5rem 0 0; background:#f3e8ff; color:#6b21a8; font-weight:600; }
+    .fy-tab.active { background:#fff; border:1px solid #e9d5ff; border-bottom:0; color:#4c1d95; }
   </style>
 </head>
 <body class="pastel-bg min-h-screen">
   <div class="container mx-auto px-4 py-8">
-    <div class="text-center mb-8">
+    <div class="text-center mb-6">
       <h1 class="text-4xl font-bold text-purple-800 mb-2">🎓 ระบบติดตามการส่งค่าสอนออนไลน์</h1>
-      <p class="text-purple-600">ปีงบประมาณ 2568</p>
+      <p class="text-purple-600">ติดตามการส่งค่าตอบแทนอาจารย์พิเศษ</p>
+    </div>
+
+    <!-- แท็บปีงบประมาณ -->
+    <div class="bg-white rounded-2xl card-shadow mb-6">
+      <div class="px-4 pt-3 border-b border-purple-100 flex items-center justify-between">
+        <div class="flex items-end gap-2" id="fyTabs"></div>
+        <div class="py-2">
+          <button id="addFYBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-lg text-sm">+ เพิ่มปีงบฯ</button>
+        </div>
+      </div>
+      <div class="px-4 pb-3 text-sm text-slate-500">
+        ปีงบฯ ปัจจุบัน: <span id="currentFYLabel" class="font-semibold text-purple-700"></span>
+      </div>
     </div>
 
     <!-- ฟอร์มเพิ่ม -->
@@ -52,7 +67,7 @@
         <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="category" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
         <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="amount" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
         <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="month" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-        <div><label class="block text-sm font-medium mb-2">หมายเหตุ</label><input id="note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
+        <div><label class="block text-sm font-medium mb-2">รายการ</label><input id="note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
         <div class="md:col-span-2 lg:col-span-3">
           <button type="submit" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg">💾 บันทึกข้อมูล</button>
         </div>
@@ -60,31 +75,24 @@
     </div>
 
     <!-- สรุป -->
-    <!-- เพิ่ม grid-cols-4 เพื่อรองรับกล่องใหม่ -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <!-- รวมเงินทั้งหมด -->
-        <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow">
-          <h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3>
-          <p id="totalAmount" class="text-3xl font-bold text-blue-900">0 บาท</p>
-        </div>
-        <!-- จำนวนรายการ -->
-        <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 card-shadow">
-          <h3 class="text-lg font-semibold text-green-800 mb-2">📊 จำนวนรายการ</h3>
-          <p id="totalRecords" class="text-3xl font-bold text-green-900">0 รายการ</p>
-        </div>
-        <!-- เสร็จสิ้นแล้ว -->
-        <div class="bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl p-6 card-shadow">
-          <h3 class="text-lg font-semibold text-pink-800 mb-2">✅ เสร็จสิ้นแล้ว</h3>
-          <p id="completedRecords" class="text-3xl font-bold text-pink-900">0 รายการ</p>
-        </div>
-        <!-- กล่องใหม่: แยกตามหมวดเงิน -->
-        <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 card-shadow">
-          <h3 class="text-lg font-semibold text-purple-800 mb-2">📂 ยอดรวมตามหมวดเงิน</h3>
-          <div id="categorySummary" class="text-purple-900 text-sm leading-6">
-            - ยังไม่มีข้อมูล -
-          </div>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div class="bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl p-6 card-shadow">
+        <h3 class="text-lg font-semibold text-blue-800 mb-2">💰 รวมเงินทั้งหมด</h3>
+        <p id="totalAmount" class="text-3xl font-bold text-blue-900">0 บาท</p>
       </div>
+      <div class="bg-gradient-to-br from-green-100 to-green-200 rounded-2xl p-6 card-shadow">
+        <h3 class="text-lg font-semibold text-green-800 mb-2">📊 จำนวนรายการ</h3>
+        <p id="totalRecords" class="text-3xl font-bold text-green-900">0 รายการ</p>
+      </div>
+      <div class="bg-gradient-to-br from-pink-100 to-pink-200 rounded-2xl p-6 card-shadow">
+        <h3 class="text-lg font-semibold text-pink-800 mb-2">✅ เสร็จสิ้นแล้ว</h3>
+        <p id="completedRecords" class="text-3xl font-bold text-pink-900">0 รายการ</p>
+      </div>
+      <div class="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl p-6 card-shadow">
+        <h3 class="text-lg font-semibold text-purple-800 mb-2">📂 ยอดรวมตามหมวดเงิน</h3>
+        <div id="categorySummary" class="text-purple-900 text-sm leading-6">- ยังไม่มีข้อมูล -</div>
+      </div>
+    </div>
 
     <!-- ตาราง -->
     <div class="bg-white rounded-2xl card-shadow overflow-hidden">
@@ -104,7 +112,7 @@
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมวดเงิน</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">เดือนที่เบิก</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จำนวนเงิน</th>
-              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">หมายเหตุ</th>
+              <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">รายการ</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">สถานะ</th>
               <th class="px-4 py-3 text-left text-sm font-semibold text-purple-800">จัดการ</th>
             </tr>
@@ -140,7 +148,7 @@
           <div><label class="block text-sm font-medium mb-2">หมวดเงิน</label><input id="edit_category" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
           <div><label class="block text-sm font-medium mb-2">จำนวนเงิน</label><input id="edit_amount" type="number" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
           <div><label class="block text-sm font-medium mb-2">เดือนที่เบิก</label><input id="edit_month" class="w-full px-3 py-2 border border-purple-200 rounded-lg" required></div>
-          <div><label class="block text-sm font-medium mb-2">หมายเหตุ</label><input id="edit_note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
+          <div><label class="block text-sm font-medium mb-2">รายการ</label><input id="edit_note" class="w-full px-3 py-2 border border-purple-200 rounded-lg"></div>
           <div class="md:col-span-2 lg:col-span-3 flex gap-3">
             <button class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-lg" type="submit">💾 บันทึกการแก้ไข</button>
             <button class="bg-gray-100 px-6 py-3 rounded-lg" type="button" onclick="closeEditModal()">ยกเลิก</button>
@@ -149,8 +157,8 @@
       </div>
     </div>
   </div>
+
   <!-- โหลดสคริปต์ไว้ท้ายสุดเสมอ -->
   <script defer src="./app.js"></script>
 </body>
 </html>
-
