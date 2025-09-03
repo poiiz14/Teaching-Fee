@@ -104,7 +104,8 @@ const statusOptions = [
 
 let allRecords = [], filteredRecords = [];
 let chartInstance = null;
-
+let currentPage = 1;
+const pageSize = 20;
 /* ====== Init ====== */
 document.addEventListener('DOMContentLoaded', async () => {
   renderFYTabs();
@@ -373,32 +374,69 @@ function drawBudgetChart(labels, used, targets, percents){
 }
 
 function renderTable() {
-  const tb = g('recordsTable'); if (!tb) return; tb.innerHTML = '';
-  (filteredRecords||[]).forEach((r,i) => {
-    const opt = statusOptions.find(s => s.value===r.status) || statusOptions[0];
+  const tb = g('recordsTable');
+  const pagination = g('paginationControls');
+  if (!tb || !pagination) return;
+
+  tb.innerHTML = '';
+  pagination.innerHTML = '';
+
+  const totalRecords = filteredRecords.length;
+  const totalPages = Math.ceil(totalRecords / pageSize);
+  if (currentPage > totalPages) currentPage = totalPages || 1;
+
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageRecords = filteredRecords.slice(start, end);
+
+  // เติมแถวข้อมูล
+  pageRecords.forEach((r, i) => {
+    const opt = statusOptions.find(s => s.value === r.status) || statusOptions[0];
     const tr = document.createElement('tr');
     tr.className = 'border-b border-gray-100 hover:bg-purple-50 transition-colors';
     tr.innerHTML = `
-      <td class="px-4 py-3 text-sm">${i+1}</td>
-      <td class="px-4 py-3 text-sm font-medium">${esc(r.subject||'')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.teacher||'')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.semester||'')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.academicYear||'')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.category||'')}</td>
-      <td class="px-4 py-3 text-sm">${esc(r.month||'')}</td>
-      <td class="px-4 py-3 text-sm font-semibold text-green-600">${(Number(r.amount)||0).toLocaleString()} บาท</td>
+      <td class="px-4 py-3 text-sm">${start + i + 1}</td>
+      <td class="px-4 py-3 text-sm font-medium">${esc(r.subject || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.teacher || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.semester || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.academicYear || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.category || '')}</td>
+      <td class="px-4 py-3 text-sm">${esc(r.month || '')}</td>
+      <td class="px-4 py-3 text-sm font-semibold text-green-600">${(Number(r.amount) || 0).toLocaleString()} บาท</td>
       <td class="px-4 py-3 text-sm">${esc(r.note || '')}</td>
       <td class="px-4 py-3">
         <select class="status-pill ${opt.class}" onchange="changeStatus('${r.id}', this.value)">
-          ${statusOptions.map(s=>`<option value="${s.value}" ${r.status===s.value?'selected':''}>${s.label}</option>`).join('')}
+          ${statusOptions.map(s => `<option value="${s.value}" ${r.status === s.value ? 'selected' : ''}>${s.label}</option>`).join('')}
         </select>
       </td>
       <td class="px-4 py-3 flex gap-2">
         <button class="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded-lg text-xs font-medium" onclick="openEditModal('${r.id}')">✏️ แก้ไข</button>
         <button class="bg-red-100 hover:bg-red-200 text-red-600 px-3 py-1 rounded-lg text-xs font-medium" onclick="removeRecord('${r.id}')">🗑️ ลบ</button>
-      </td>`;
+      </td>
+    `;
     tb.appendChild(tr);
   });
+
+  // สร้างปุ่ม pagination
+  if (totalPages > 1) {
+    const prevBtn = document.createElement('button');
+    prevBtn.textContent = '⬅ ก่อนหน้า';
+    prevBtn.className = 'px-3 py-1 bg-purple-100 rounded disabled:opacity-50';
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => { currentPage--; renderTable(); };
+    pagination.appendChild(prevBtn);
+
+    const pageInfo = document.createElement('span');
+    pageInfo.textContent = `หน้า ${currentPage} / ${totalPages}`;
+    pagination.appendChild(pageInfo);
+
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = 'ถัดไป ➡';
+    nextBtn.className = 'px-3 py-1 bg-purple-100 rounded disabled:opacity-50';
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => { currentPage++; renderTable(); };
+    pagination.appendChild(nextBtn);
+  }
 }
 
 /* ===== Utils ===== */
@@ -430,5 +468,6 @@ window.removeRecord = removeRecord;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.exportCSV = exportCSV;
+
 
 
